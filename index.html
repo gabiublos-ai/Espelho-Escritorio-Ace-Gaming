@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Espelho de Lugares — Ace Gaming</title>
+</head>
+<body>
+<style>
+  :root{
+    --paper:#F1F0EC; --surface:#FFFFFF; --ink:#201D18; --muted:#7A756C;
+    --line:#DDDAD2; --accent:#FF5C00; --accent-soft:#FFEDE2;
+    --ok:#16A34A;
+    --c-board:#23201B; --c-gg:#D9488B; --c-perf:#FF5C00; --c-fin:#B7791F;
+    --c-ops:#2563EB; --c-crm:#0E9F94; --c-ai:#16A34A; --c-tech:#7C5CDB;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--paper);color:var(--ink);overflow:hidden}
+  button{font:inherit;cursor:pointer}
+
+  /* ---------- top bar ---------- */
+  #topbar{display:flex;align-items:center;gap:16px;padding:10px 18px;background:var(--surface);border-bottom:1px solid var(--line)}
+  #brand{display:flex;align-items:baseline;gap:8px}
+  #brand .dot{width:12px;height:12px;border-radius:50%;background:var(--accent);align-self:center}
+  #brand h1{font-size:17px;font-weight:800;margin:0;letter-spacing:-.02em}
+  #brand .sub{font-size:12px;color:var(--muted)}
+  #stats{margin-left:auto;display:flex;align-items:baseline;gap:6px;font-variant-numeric:tabular-nums}
+  #stats b{font-size:20px;font-weight:800}
+  #stats span{font-size:12px;color:var(--muted)}
+  #nSeats{margin-left:8px}
+  #layoutSel{appearance:auto;-webkit-appearance:menulist}
+  .btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600}
+  .btn:hover{border-color:var(--ink)}
+  .btn:focus-visible,.chair:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btn.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .btn.primary:hover{background:#000}
+
+  /* ---------- layout ---------- */
+  #app{display:flex;height:calc(100vh - 53px)}
+  #sidebar{width:330px;min-width:330px;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column}
+  #search{margin:12px 12px 8px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;width:calc(100% - 24px)}
+  #search:focus{outline:none;border-color:var(--accent)}
+  #filters{display:flex;flex-wrap:wrap;gap:6px;padding:0 12px 8px}
+  .fchip{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:99px;padding:4px 10px;font-size:11px;font-weight:700}
+  .fchip .fc{font-variant-numeric:tabular-nums;font-weight:600;margin-left:4px;opacity:.75}
+  .fchip:hover{border-color:var(--ink);color:var(--ink)}
+  .fchip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .chair.fdim{opacity:.18;filter:grayscale(.6)}
+  #people{overflow-y:auto;flex:1;padding-bottom:24px}
+  .grp{padding:10px 14px 4px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:7px;position:sticky;top:0;background:var(--surface);z-index:2}
+  .grp .gdot{width:9px;height:9px;border-radius:50%}
+  .grp .cnt{margin-left:auto;font-variant-numeric:tabular-nums;font-weight:600;letter-spacing:0;text-transform:none}
+  .person{display:flex;align-items:center;gap:10px;padding:7px 14px;cursor:grab;border-left:3px solid transparent}
+  .person:hover{background:var(--paper)}
+  .person.sel{background:var(--accent-soft);border-left-color:var(--accent)}
+  .person.placed{opacity:.55}
+  .person .av{width:28px;height:28px;min-width:28px;border-radius:50%;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .person .nm{font-size:13px;font-weight:600;line-height:1.2}
+  .person .rl{font-size:11px;color:var(--muted);line-height:1.25}
+  .person .rl .md{font-weight:600;color:#8F897D}
+  .person .rl .md.rem{color:var(--c-tech)}
+  .person .seatTag{margin-left:auto;font-size:11px;font-weight:700;font-variant-numeric:tabular-nums;background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:2px 6px;white-space:nowrap}
+
+  /* ---------- map ---------- */
+  #mapWrap{flex:1;position:relative;overflow:hidden}
+  #hint{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:20;background:var(--ink);color:#fff;font-size:13px;padding:8px 14px;border-radius:99px;display:none;align-items:center;gap:10px;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+  #hint button{background:none;border:none;color:#FFB68A;font-weight:700;font-size:13px;padding:0}
+  #stage{position:absolute;transform-origin:0 0}
+  #canvas{position:relative;width:1500px;height:820px}
+  #walls{position:absolute;inset:0;background:var(--surface);border:3px solid var(--ink);border-radius:26px 26px 18px 18px;box-shadow:0 2px 10px rgba(32,29,24,.08)}
+  .room{position:absolute;border:1.5px solid #B9B4A9;border-radius:8px;background:#FAF9F6}
+  .room .rl{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-size:10px;letter-spacing:.09em;font-weight:700;color:#9A948A;text-transform:uppercase}
+  .room .tbl{position:absolute;background:#EAE8E1;border:1px solid #CFCBC1;border-radius:50%}
+  .zoneLabel{position:absolute;font-size:12px;letter-spacing:.14em;font-weight:800;color:#B4AEA2;text-transform:uppercase}
+  .zoneLabel small{display:block;font-size:10px;font-weight:600;letter-spacing:.06em;margin-top:2px}
+  .desk{position:absolute;background:#F3F1EB;border:1.5px solid #C9C4B8;border-radius:6px}
+  .divider{position:absolute;width:2px;background:#B9B4A9}
+  .partition{position:absolute;height:5px;background:#8F897D;border-radius:3px}
+  .chair{position:absolute;width:30px;height:30px;border-radius:50%;background:var(--surface);border:2px solid #B9B4A9;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;transform:translate(-50%,-50%);transition:box-shadow .12s, border-color .12s;padding:0}
+  .chair .sn{position:absolute;font-size:8px;color:#C0BBB0;font-weight:600;pointer-events:none}
+  .chair.occ{border-color:transparent}
+  .chair:hover{box-shadow:0 0 0 3px var(--accent-soft);border-color:var(--accent)}
+  body.assigning .chair:not(.occ){border-color:var(--accent);border-style:dashed;animation:pulse 1.2s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,92,0,.35)}50%{box-shadow:0 0 0 6px rgba(255,92,0,0)}}
+  .chair.dragover{box-shadow:0 0 0 4px var(--accent);z-index:5}
+  .chair.occ.vac{border:2px dashed rgba(255,255,255,.95)}
+
+  /* popover */
+  #pop{position:fixed;z-index:50;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.16);padding:12px 14px;display:none;min-width:210px}
+  #pop .pn{font-weight:700;font-size:14px}
+  #pop .pr{font-size:12px;color:var(--muted);margin:2px 0 10px}
+  #pop .row{display:flex;gap:8px}
+  #pop .btn{font-size:12px;padding:5px 10px}
+
+  #legend{position:absolute;left:14px;bottom:12px;z-index:15;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:6px 14px;max-width:70%}
+  #legend .li{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600}
+  #legend .li i{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+  /* print */
+  #printList{display:none}
+  @media print{
+    body{overflow:visible;background:#fff}
+    #topbar .btn,#sidebar,#hint,#legend,#pop{display:none !important}
+    #app{display:block;height:auto}
+    #mapWrap{overflow:visible;height:auto}
+    #stage{position:static;transform:scale(.62) !important;transform-origin:0 0}
+    #canvas{page-break-after:always}
+    #printList{display:block;padding:20px;font-size:12px}
+    #printList h2{font-size:16px}
+    #printList table{border-collapse:collapse;width:100%}
+    #printList td,#printList th{border:1px solid #ccc;padding:4px 8px;text-align:left}
+  }
+</style>
+
+<div id="topbar">
+  <div id="brand"><span class="dot"></span><h1>Espelho de Lugares</h1><span class="sub">Ace Gaming · R. Olimpíadas, 134 — 3º andar</span></div>
+  <div id="stats"><b id="nPlaced">0</b><span>/ <span id="nTotal">0</span> alocados</span><span id="nSeats"></span></div>
+  <select id="layoutSel" class="btn" title="Layout do escritório" aria-label="Layout do escritório">
+    <option value="atual">Layout atual</option>
+    <option value="p42">42 posições</option>
+    <option value="p60">60 posições</option>
+  </select>
+  <label class="btn" for="csvFile" style="display:inline-flex;align-items:center">Subir CSV<input type="file" id="csvFile" accept=".csv,text/csv" style="display:none"></label>
+  <button class="btn" id="btnAuto">Auto-alocar restantes</button>
+  <button class="btn" id="btnCsv">Baixar CSV</button>
+  <button class="btn" id="btnPrint">Imprimir</button>
+  <button class="btn" id="btnClear">Limpar tudo</button>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <input id="search" type="search" placeholder="Buscar nome, cargo ou área…" aria-label="Buscar pessoa">
+    <div id="filters" role="group" aria-label="Filtrar por modelo de trabalho"></div>
+    <div id="people"></div>
+  </div>
+  <div id="mapWrap">
+    <div id="hint"><span id="hintTxt"></span><button id="hintCancel">cancelar (Esc)</button></div>
+    <div id="stage"><div id="canvas"><div id="walls"></div></div></div>
+    <div id="legend"></div>
+  </div>
+</div>
+
+<div id="pop" role="dialog"></div>
+
+<div id="printList"><h2>Lista de assentos</h2><table><thead><tr><th>Assento</th><th>Nome</th><th>Cargo</th><th>Área</th></tr></thead><tbody id="plBody"></tbody></table></div>
+
+<script>
+/* ============ dados ============ */
+const AREA_COLORS = {
+  'Board':                             'var(--c-board)',
+  'Gente & Gestão':                    'var(--c-gg)',
+  'Performance MKT':                   'var(--c-perf)',
+  'Financeiro, Jurídico & Compliance': 'var(--c-fin)',
+  'Ops':                               'var(--c-ops)',
+  'Lifecycle & CRM':                   'var(--c-crm)',
+  'AI Culture & Dados':                'var(--c-ai)',
+  'Tecnologia & Produto':              'var(--c-tech)'
+};
+const AREA_ORDER = Object.keys(AREA_COLORS);
+const FALLBACK_COLORS = ['#DC2626','#0891B2','#4D7C0F','#9333EA','#EA580C','#0F766E','#BE185D','#334155'];
+const dynColors = {};
+function areaColor(a){
+  if(AREA_COLORS[a]) return AREA_COLORS[a];
+  if(!dynColors[a]) dynColors[a]=FALLBACK_COLORS[Object.keys(dynColors).length % FALLBACK_COLORS.length];
+  return dynColors[a];
+}
+function areasList(){
+  const seen=[]; PEOPLE.forEach(p=>{ if(!seen.includes(p.area)) seen.push(p.area); });
+  const appear=[...seen];
+  return seen.sort((a,b)=>{
+    const ia=AREA_ORDER.indexOf(a), ib=AREA_ORDER.indexOf(b);
+    return ((ia<0?99:ia)-(ib<0?99:ib)) || (appear.indexOf(a)-appear.indexOf(b));
+  });
+}
+const RAW = [
+ ['Board','CEO','Pedro Victor Lima de Faria','Remoto - BH'],
+ ['Board','COO','Bruno Henrique Theodoro Longhini','Presencial'],
+ ['Board','Head COS','Marcelo Guedes Nogueira','Híbrido'],
+ ['Gente & Gestão','Head Gente & Gestão','Gabriela Uhr Blos Lolli','Híbrido'],
+ ['Gente & Gestão','Especialista Gente & Gestão','Jonieri Gomes da Silva','Híbrido'],
+ ['Performance MKT','Head Performance MKT','Leandro Brant Vitoriano Vinte','Híbrido'],
+ ['Performance MKT','Gerente de Mídia Paga II','Vinicius Eduardo Costa Cruz','Híbrido'],
+ ['Performance MKT','Especialista Marketing','Eric Gabriel de Souza Pereira','Híbrido'],
+ ['Performance MKT','Especialista Performance MKT','Felipe Pinheiro Gama e Silva','Híbrido'],
+ ['Performance MKT','Designer III','Alexandre Lins Dutra','Remoto - BH'],
+ ['Performance MKT','Editor de Vídeo III','Luis Henrique Alves','Híbrido'],
+ ['Financeiro, Jurídico & Compliance','Head Financeiro, Jurídico & Compliance','Anderson Ribeiro Caresma','Híbrido'],
+ ['Financeiro, Jurídico & Compliance','Head Jurídico & Compliance','Gustavo Henrique Pereira de Lima','Remoto - BH'],
+ ['Financeiro, Jurídico & Compliance','Head Finanças Estratégicas','Leonardo Favorito Martins','Remoto - BH'],
+ ['Financeiro, Jurídico & Compliance','Analista AML II','Nathália Alves Pereira','Híbrido'],
+ ['Financeiro, Jurídico & Compliance','Analista Financeiro III','Rodrigo Bortolucci','Híbrido'],
+ ['Financeiro, Jurídico & Compliance','Analista Compras & Facilites I','Tatiane dos Santos Leite','Híbrido'],
+ ['Ops','Head Ops','Lucas Corrêa Cantão da Silva','Híbrido'],
+ ['Ops','Coordenador CX','Bruna Luiza de Carvalho Moreira','Remoto - BH'],
+ ['Ops','Coordenador Ops','Thiago Moreira Saraiva','Híbrido'],
+ ['Ops','Supervisor de Atendimento Jogador I','Amanda Moreira Santos','Híbrido'],
+ ['Ops','Supervisor de Atendimento Jogador','André Rios Mazin','Remoto'],
+ ['Ops','Supervisor de Atendimento Jogador','Letícia Mara da Costa Ferreira','Remoto'],
+ ['Ops','Especialista Branding Content','Lívia Kolbe','Híbrido'],
+ ['Ops','Analista Fraude & Pagamentos I','Gabriella Ribeiro','Remoto'],
+ ['Ops','Analista Fraude & Pagamentos I','Guilherme Oliveira Brandão','Remoto'],
+ ['Ops','Analista Fraude & Pagamentos III','Leonardo Novais Ebrenz','Híbrido'],
+ ['Ops','Analista Fraude & Pagamentos I','VITORIA CRISTINA DA COSTA TEIXEIRA','Remoto'],
+ ['Ops','Analista Fraude & Pagamentos I','Victor Hugo Menezes Moreira','Remoto'],
+ ['Ops','Analista Fraude & Pagamentos I','Vitória Kelly de Oliveira Felipe','Híbrido'],
+ ['Ops','Assistente de Atendimento Jogador I','Amarildo Oliveira de Araújo Júnior','Híbrido'],
+ ['Ops','Assistente de Atendimento Jogador III','Evair Santana Maciel','Remoto'],
+ ['Ops','Assistente de Atendimento Jogador I','Eziane da Silva Gomes','Remoto'],
+ ['Ops','Assistente de Atendimento Jogador I','Guilherme Santos Vito','Remoto'],
+ ['Ops','Assistente de Atendimento Jogador III','Luana Conceição Soares','Remoto'],
+ ['Ops','Assistente de Atendimento Jogador III','Silas Fanuel Pereira Alves','Híbrido'],
+ ['Lifecycle & CRM','Head Lifecycle & CRM','Lucas Guedes Moreira','Remoto - BH'],
+ ['Lifecycle & CRM','Gerente Lifecycle & CRM','Rafaela Cristina Possa Parreira','Remoto - BH'],
+ ['Ops','Product Manager Sportbook','Rafael Miranda Carvalho Costa','Híbrido'],
+ ['Lifecycle & CRM','Analista Marketing II','Renan Menezes Amaral','Híbrido'],
+ ['Lifecycle & CRM','Webdesigner II','Gustavo Mendes Arruda','Remoto'],
+ ['Lifecycle & CRM','Copywriter II','Dayan Chiodo Dias','Híbrido'],
+ ['AI Culture & Dados','Head AI/Dados','Pedro Caetano Utida Neves','Híbrido'],
+ ['AI Culture & Dados','Especialista AI & Dados I','Thiago de Pinho Mourão Monteiro','Remoto - BH'],
+ ['AI Culture & Dados','Especialista AI & Dados I','Vinicius dos Santos Barreiros','Híbrido'],
+ ['AI Culture & Dados','Analista de Dados III','Gabriel da Cruz Oliveira','Híbrido'],
+ ['Tecnologia & Produto','Head Tech & Produto','Pedro Henrique Silva Antunes','Remoto - RJ'],
+ ['Tecnologia & Produto','Engineering Manager','Thiago Dias Melin','Remoto'],
+ ['Tecnologia & Produto','PM','Bruno Heidrich dos Santos','Híbrido'],
+ ['Tecnologia & Produto','PO QA','Vinicius Carneiro Trindade','Híbrido'],
+ ['Tecnologia & Produto','Analista UX/UI','Paulo Roberto Ribeiro Sobrinho','Remoto'],
+ ['Tecnologia & Produto','Desenvolvedor Full Stack','Andrei Garcia','Remoto'],
+ ['Tecnologia & Produto','Desenvolvedor Full Stack','Pedro Henrique Ferreira Iegler','Remoto'],
+ // vagas em aberto (headcount status "Em processo")
+ ['Performance MKT','Analista Tráfego III - mobile','Vaga em aberto','',true],
+ ['Performance MKT','Especialista Tráfego','Vaga em aberto','',true],
+ ['Ops','Analista de Plataformas II - Reputacional','Vaga em aberto','',true],
+ ['Lifecycle & CRM','Designer III','Vaga em aberto','',true],
+ ['AI Culture & Dados','AI Analyst','Vaga em aberto','',true],
+ ['Tecnologia & Produto','Analista segurança & Infraestrutura','Vaga em aberto','',true],
+ ['Tecnologia & Produto','Analista Suporte e Sistemas','Vaga em aberto','',true]
+];
+const LOW = new Set(['da','de','do','das','dos','e']);
+function titleCase(s){
+  if(s !== s.toUpperCase()) return s;
+  return s.toLowerCase().split(/\s+/).map((w,i)=> LOW.has(w)&&i>0 ? w : w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+}
+function buildPeople(rows){ return rows.map((r,i)=>({id:i, area:r[0]||'Sem área', cargo:r[1], nome:titleCase(r[2].trim()), modelo:r[3]||'', vaga:!!r[4]})); }
+const PKEY='ace-espelho-people-v4';
+let PEOPLE;
+try{
+  const st=JSON.parse(localStorage.getItem(PKEY));
+  PEOPLE = (Array.isArray(st)&&st.length&&st[0].nome)? st : buildPeople(RAW);
+}catch(e){ PEOPLE = buildPeople(RAW); }
+function initials(n){const p=n.split(/\s+/);return (p[0][0]+(p.length>1?p[p.length-1][0]:'')).toUpperCase();}
+
+/* ============ layouts ============ */
+// 3 opções: layout atual (mesa coletiva não conta), planta 42 posições e planta 60 posições
+// (salas de reunião nunca contam; recepção tem exatamente 1 lugar em todos)
+const LAYOUTS = {atual:'Layout atual', p42:'42 posições', p60:'60 posições'};
+const LKEY='ace-espelho-layout-v1';
+let curLayout = localStorage.getItem(LKEY);
+if(!LAYOUTS[curLayout]) curLayout='atual';
+
+const seats = []; // {id,x,y,zone}
+function addSeat(id,x,y,zone){seats.push({id,x,y,zone});}
+
+const canvas = document.getElementById('canvas');
+let chairEls = {};
+function el(tag,cls,style,html){const d=document.createElement(tag);if(cls)d.className=cls;if(style)d.style.cssText=style;if(html!=null)d.innerHTML=html;canvas.appendChild(d);return d;}
+function room(x,y,w,h,label,tbl){const r=el('div','room',`left:${x}px;top:${y}px;width:${w}px;height:${h}px`);r.innerHTML=(tbl?`<div class="tbl" style="left:${w/2-32}px;top:${h/2-26}px;width:64px;height:40px"></div>`:'')+`<div class="rl">${label}</div>`;}
+
+// mesa vertical com N lugares por lado: desenha a mesa e cria os assentos
+function bench(prefix,start,cx,cy,perSide,zone){
+  const h=perSide*70+10;
+  el('div','desk',`left:${cx-40}px;top:${cy-h/2}px;width:80px;height:${h}px`);
+  let n=start;
+  const offs=[]; for(let i=0;i<perSide;i++) offs.push((i-(perSide-1)/2)*70);
+  offs.forEach(dy=>addSeat(prefix+n++, cx-55, cy+dy, zone));
+  offs.forEach(dy=>addSeat(prefix+n++, cx+55, cy+dy, zone));
+  return n;
+}
+
+function makeChairs(){
+  seats.forEach(s=>{
+    const c = document.createElement('button');
+    c.className='chair'; c.style.left=s.x+'px'; c.style.top=s.y+'px';
+    c.dataset.seat=s.id;
+    c.innerHTML=`<span class="sn">${s.id}</span>`;
+    canvas.appendChild(c); chairEls[s.id]=c;
+    c.addEventListener('click', ev=>{ ev.stopPropagation(); onChairClick(s.id, c); });
+    c.addEventListener('dragover', ev=>{ ev.preventDefault(); c.classList.add('dragover'); });
+    c.addEventListener('dragleave', ()=>c.classList.remove('dragover'));
+    c.addEventListener('drop', ev=>{
+      ev.preventDefault(); c.classList.remove('dragover');
+      const pid = parseInt(ev.dataTransfer.getData('text/plain'),10);
+      if(!isNaN(pid)) place(pid, s.id);
+    });
+  });
+}
+
+function buildMap(key){
+  canvas.innerHTML='<div id="walls"></div>';
+  seats.length=0; chairEls={};
+  const tCols=[150,310,470], pCols=[1060,1220,1380];
+  // centro comum: mesa coletiva (decorativa, não contada), salas e lockers
+  el('div','desk','left:620px;top:104px;width:280px;height:46px;border-radius:10px');
+  el('div','zoneLabel','left:620px;top:40px;font-size:10px','Mesa coletiva · não contada');
+  room(600,285,320,165,'Reunião',true);
+  room(600,470,320,152,'Recepção',false);
+  el('div','room','left:600px;top:243px;width:320px;height:24px','<div class="rl" style="bottom:4px">Lockers</div>');
+  if(key==='atual'){
+    let tn=1; [220,560].forEach(cy=>tCols.forEach(cx=>{ tn=bench('T',tn,cx,cy,2,'TIME'); }));
+    let pn=1; [220,560].forEach(cy=>pCols.forEach(cx=>{ pn=bench('P',pn,cx,cy,2,'PERFORMANCE'); }));
+    el('div','partition','left:70px;top:388px;width:460px');
+    el('div','partition','left:970px;top:388px;width:460px');
+    el('div','zoneLabel','left:48px;top:36px','TIME<small>24 lugares</small>');
+    el('div','zoneLabel','left:962px;top:36px','Performance<small>24 lugares</small>');
+  }else if(key==='p42'){
+    let tn=1; tCols.forEach(cx=>{ tn=bench('T',tn,cx,400,3,'OESTE'); });
+    let pn=1; [220,560].forEach(cy=>pCols.forEach(cx=>{ pn=bench('P',pn,cx,cy,2,'LESTE'); }));
+    el('div','partition','left:970px;top:388px;width:460px');
+    el('div','zoneLabel','left:48px;top:36px','Open space oeste<small>18 lugares</small>');
+    el('div','zoneLabel','left:962px;top:36px','Open space leste<small>24 lugares</small>');
+  }else{ // p60
+    let tn=1; tCols.forEach(cx=>{ tn=bench('T',tn,cx,400,4,'OESTE'); });
+    let pn=1; [220,560].forEach(cy=>pCols.forEach(cx=>{ pn=bench('P',pn,cx,cy,3,'LESTE'); }));
+    el('div','partition','left:970px;top:388px;width:460px');
+    el('div','zoneLabel','left:48px;top:36px','Open space oeste<small>24 lugares</small>');
+    el('div','zoneLabel','left:962px;top:36px','Open space leste<small>36 lugares</small>');
+  }
+  addSeat('R1',760,546,'RECEPCAO');
+  makeChairs();
+}
+
+/* ============ estado (alocações por layout) ============ */
+const AKEY='ace-espelho-assign-v4';
+let assignStore = {};
+try{ assignStore = JSON.parse(localStorage.getItem(AKEY)||'{}'); }catch(e){ assignStore={}; }
+if(!Object.keys(assignStore).length){
+  // migrar simulações da v3 (lista tinha Marcos Steinmeier, id 9; ids seguintes deslocam -1)
+  try{
+    const oldStore = JSON.parse(localStorage.getItem('ace-espelho-assign-v3')||'{}');
+    let oldPeople = null;
+    try{ const s=JSON.parse(localStorage.getItem('ace-espelho-people-v3')); if(Array.isArray(s)&&s.length&&s[0].nome) oldPeople=s; }catch(e){}
+    Object.keys(oldStore).forEach(k=>{
+      const m={};
+      for(const seat in oldStore[k]){
+        const opid = oldStore[k][seat];
+        let np;
+        if(oldPeople){
+          const op = oldPeople[opid]; if(!op) continue;
+          np = PEOPLE.findIndex(p=>p.nome===op.nome && p.cargo===op.cargo);
+        }else{
+          np = opid===9 ? -1 : (opid>9 ? opid-1 : opid);
+        }
+        if(np>=0) m[seat]=np;
+      }
+      assignStore[k]=m;
+    });
+  }catch(e){}
+}
+Object.keys(LAYOUTS).forEach(k=>{ if(!assignStore[k] || typeof assignStore[k]!=='object') assignStore[k]={}; });
+let assign = assignStore[curLayout]; // seatId -> personId
+function sanitize(){ for(const k in assign){ if(!seats.find(s=>s.id===k) || !PEOPLE[assign[k]]) delete assign[k]; } }
+function seatOf(pid){ for(const k in assign) if(assign[k]===pid) return k; return null; }
+function save(){ assignStore[curLayout]=assign; localStorage.setItem(AKEY, JSON.stringify(assignStore)); localStorage.setItem(LKEY, curLayout); }
+
+let selected = null; // personId em alocação
+
+buildMap(curLayout); sanitize();
+
+const layoutSel = document.getElementById('layoutSel');
+layoutSel.value = curLayout;
+layoutSel.addEventListener('change', ()=>{
+  curLayout = layoutSel.value;
+  assign = assignStore[curLayout];
+  if(selected!==null){ selected=null; document.body.classList.remove('assigning'); document.getElementById('hint').style.display='none'; }
+  buildMap(curLayout); sanitize(); save(); renderAll();
+});
+
+/* ============ filtro por modelo (multi-seleção) ============ */
+const FILTERS = [
+  {key:'office',     label:'Presencial + Híbrido', match:p=>/^(Presencial|Híbrido)/i.test(p.modelo||'')},
+  {key:'remote',     label:'Remoto',               match:p=>/^Remoto$/i.test((p.modelo||'').trim())},
+  {key:'remotecity', label:'Remoto c/ cidade',     match:p=>/^Remoto\s*-/i.test(p.modelo||'')},
+  {key:'vagas',      label:'Vagas',                match:p=>!!p.vaga}
+];
+const modelSel = new Set(); // vazio = todos
+function filterActive(){ return modelSel.size>0 && modelSel.size<FILTERS.length; }
+function filterFn(){
+  if(!filterActive()) return p=>true;
+  const on = FILTERS.filter(f=>modelSel.has(f.key));
+  return p=>on.some(f=>f.match(p));
+}
+function renderFilters(){
+  const box=document.getElementById('filters');
+  box.innerHTML='';
+  const all=document.createElement('button');
+  all.className='fchip'+(modelSel.size===0?' on':'');
+  all.innerHTML=`Todos<span class="fc">${PEOPLE.length}</span>`;
+  all.addEventListener('click', ()=>{ modelSel.clear(); renderFilters(); renderAll(); });
+  box.appendChild(all);
+  FILTERS.forEach(f=>{
+    const b=document.createElement('button');
+    b.className='fchip'+(modelSel.has(f.key)?' on':'');
+    b.innerHTML=`${f.label}<span class="fc">${PEOPLE.filter(f.match).length}</span>`;
+    b.addEventListener('click', ()=>{
+      modelSel.has(f.key)? modelSel.delete(f.key) : modelSel.add(f.key);
+      if(modelSel.size===FILTERS.length) modelSel.clear(); // todos marcados = todos
+      renderFilters(); renderAll();
+    });
+    box.appendChild(b);
+  });
+}
+
+/* ============ sidebar ============ */
+const peopleBox = document.getElementById('people');
+const searchIn = document.getElementById('search');
+function norm(s){return s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase();}
+function renderSidebar(){
+  const q = norm(searchIn.value||'');
+  peopleBox.innerHTML='';
+  areasList().forEach(area=>{
+    const fm = filterFn();
+    const members = PEOPLE.filter(p=>p.area===area && fm(p) && (!q || norm(p.nome+' '+p.cargo+' '+p.area).includes(q)));
+    if(!members.length) return;
+    const placed = PEOPLE.filter(p=>p.area===area && fm(p) && seatOf(p.id)!==null).length;
+    const tot = PEOPLE.filter(p=>p.area===area && fm(p)).length;
+    const g=document.createElement('div');g.className='grp';
+    g.innerHTML=`<span class="gdot" style="background:${areaColor(area)}"></span>${area}<span class="cnt">${placed}/${tot}</span>`;
+    peopleBox.appendChild(g);
+    members.forEach(p=>{
+      const st = seatOf(p.id);
+      const d=document.createElement('div');
+      d.className='person'+(selected===p.id?' sel':'')+(st?' placed':'');
+      d.draggable=true; d.dataset.pid=p.id;
+      const avStyle = p.vaga
+        ? `background:#fff;color:${areaColor(p.area)};border:2px dashed ${areaColor(p.area)}`
+        : `background:${areaColor(p.area)}`;
+      d.innerHTML=`<span class="av" style="${avStyle}">${initials(p.nome)}</span>
+        <span><span class="nm">${p.nome}</span><br><span class="rl">${p.cargo}${p.modelo?` · <b class="md${/^Remoto/.test(p.modelo)?' rem':''}">${p.modelo}</b>`:''}</span></span>
+        ${st?`<span class="seatTag">${st}</span>`:''}`;
+      d.addEventListener('click', ()=>selectPerson(p.id));
+      d.addEventListener('dragstart', ev=>{ ev.dataTransfer.setData('text/plain', String(p.id)); });
+      peopleBox.appendChild(d);
+    });
+  });
+}
+searchIn.addEventListener('input', renderSidebar);
+
+/* ============ render mapa/estado ============ */
+function renderChairs(){
+  const fm = filterFn();
+  seats.forEach(s=>{
+    const c=chairEls[s.id]; const pid=assign[s.id];
+    if(pid!==undefined && PEOPLE[pid]){
+      const p=PEOPLE[pid];
+      c.classList.toggle('fdim', filterActive() && !fm(p));
+      c.classList.toggle('vac', !!p.vaga);
+      c.classList.add('occ');
+      c.style.background=areaColor(p.area);
+      c.textContent=initials(p.nome);
+      c.title=`${p.nome} — ${p.cargo}${p.modelo?' · '+p.modelo:''} (${s.id})`;
+      c.draggable=true;
+      c.ondragstart=ev=>{ ev.dataTransfer.setData('text/plain', String(pid)); };
+    }else{
+      c.classList.remove('occ','fdim','vac'); c.style.background=''; c.title='Assento '+s.id;
+      c.innerHTML=`<span class="sn">${s.id}</span>`; c.draggable=false; c.ondragstart=null;
+    }
+  });
+  document.getElementById('nPlaced').textContent=Object.keys(assign).length;
+  document.getElementById('nTotal').textContent=PEOPLE.length;
+  document.getElementById('nSeats').textContent='· '+seats.length+' lugares neste layout';
+  renderPrintList();
+}
+function renderPrintList(){
+  const tb=document.getElementById('plBody'); tb.innerHTML='';
+  seats.filter(s=>assign[s.id]!==undefined).forEach(s=>{
+    const p=PEOPLE[assign[s.id]];
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${s.id}</td><td>${p.nome}</td><td>${p.cargo}</td><td>${p.area}</td>`;
+    tb.appendChild(tr);
+  });
+}
+function renderAll(){ renderChairs(); renderSidebar(); }
+
+/* ============ interação ============ */
+const hint=document.getElementById('hint'), hintTxt=document.getElementById('hintTxt');
+function selectPerson(pid){
+  selected = (selected===pid)? null : pid;
+  document.body.classList.toggle('assigning', selected!==null);
+  if(selected!==null){
+    hintTxt.textContent='Alocando: '+PEOPLE[selected].nome+' — clique numa cadeira';
+    hint.style.display='flex';
+  } else hint.style.display='none';
+  hidePop(); renderSidebar();
+}
+document.getElementById('hintCancel').addEventListener('click', ()=>selectPerson(selected));
+document.addEventListener('keydown', ev=>{ if(ev.key==='Escape'&&selected!==null) selectPerson(selected); });
+
+function place(pid, seatId){
+  const cur = seatOf(pid);
+  const occ = assign[seatId];
+  if(occ!==undefined && occ!==pid){
+    if(cur) assign[cur]=occ; // troca
+    else delete assign[Object.keys(assign).find(k=>assign[k]===occ)];
+  }
+  if(cur) delete assign[cur];
+  assign[seatId]=pid;
+  save(); renderAll();
+}
+function nextUnplaced(afterPid){
+  const p=PEOPLE[afterPid], fm=filterFn();
+  const pool = PEOPLE.filter(x=>x.area===p.area && fm(x) && seatOf(x.id)===null && x.id!==afterPid);
+  if(pool.length) return pool[0].id;
+  const any = PEOPLE.filter(x=>fm(x) && seatOf(x.id)===null && x.id!==afterPid);
+  return any.length? any[0].id : null;
+}
+function onChairClick(seatId, cEl){
+  if(selected!==null){
+    const pid=selected;
+    place(pid, seatId);
+    const nxt=nextUnplaced(pid);
+    selected=null; document.body.classList.remove('assigning'); hint.style.display='none';
+    if(nxt!==null) selectPerson(nxt);
+    else renderSidebar();
+    return;
+  }
+  const pid=assign[seatId];
+  if(pid!==undefined) showPop(seatId, pid, cEl);
+}
+
+/* popover */
+const pop=document.getElementById('pop');
+let popSeat=null;
+function showPop(seatId,pid,cEl){
+  popSeat=seatId;
+  const p=PEOPLE[pid];
+  pop.innerHTML=`<div class="pn">${p.nome}</div><div class="pr">${p.cargo} · ${p.area}${p.modelo?' · '+p.modelo:''} · ${seatId}</div>
+    <div class="row"><button class="btn" id="popMove">Mover</button><button class="btn" id="popRm">Remover</button></div>`;
+  const r=cEl.getBoundingClientRect();
+  pop.style.display='block';
+  pop.style.left=Math.min(window.innerWidth-240, r.left+r.width/2)+'px';
+  pop.style.top=Math.min(window.innerHeight-120, r.bottom+8)+'px';
+  document.getElementById('popRm').onclick=()=>{ delete assign[seatId]; save(); hidePop(); renderAll(); };
+  document.getElementById('popMove').onclick=()=>{ hidePop(); selectPerson(pid); };
+}
+function hidePop(){ pop.style.display='none'; popSeat=null; }
+document.addEventListener('click', ev=>{ if(!pop.contains(ev.target) && !ev.target.classList.contains('chair')) hidePop(); });
+
+/* ============ ações topo ============ */
+document.getElementById('btnClear').addEventListener('click', ()=>{
+  if(confirm('Remover todas as alocações?')){ assign={}; save(); renderAll(); }
+});
+document.getElementById('btnAuto').addEventListener('click', ()=>{
+  const pref={
+    'Board':['M','P','T'],'Performance MKT':['P'],'Lifecycle & CRM':['P','T'],
+    'AI Culture & Dados':['M','P','T'],'Ops':['T','M'],'Tecnologia & Produto':['P','M','T'],
+    'Gente & Gestão':['M','T'],'Financeiro, Jurídico & Compliance':['M','T']
+  };
+  const free=()=>seats.filter(s=>assign[s.id]===undefined);
+  PEOPLE.filter(p=>filterFn()(p) && seatOf(p.id)===null).forEach(p=>{
+    const wants=pref[p.area]||['T','P','M'];
+    let seat=null;
+    for(const pre of wants){
+      seat=free().find(s=>s.id.startsWith(pre));
+      if(seat) break;
+    }
+    if(!seat) seat=free()[0];
+    if(seat) assign[seat.id]=p.id;
+  });
+  save(); renderAll();
+});
+document.getElementById('btnCsv').addEventListener('click', ()=>{
+  let csv='Assento,Nome,Cargo,Área,Modelo\n';
+  seats.filter(s=>assign[s.id]!==undefined).forEach(s=>{
+    const p=PEOPLE[assign[s.id]];
+    csv+=`${s.id},"${p.nome}","${p.cargo}","${p.area}","${p.modelo||''}"\n`;
+  });
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download='espelho_lugares_ace_gaming.csv'; a.click();
+});
+document.getElementById('btnPrint').addEventListener('click', ()=>window.print());
+
+/* legenda */
+function buildLegend(){
+  const leg=document.getElementById('legend');
+  leg.innerHTML='';
+  areasList().forEach(a=>{
+    const s=document.createElement('span');s.className='li';
+    s.innerHTML=`<i style="background:${areaColor(a)}"></i>${a}`;
+    leg.appendChild(s);
+  });
+}
+buildLegend();
+
+/* ============ upload de CSV ============ */
+function parseCSV(text){
+  const rows=[]; let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(q){ if(ch==='"'){ if(text[i+1]==='"'){cur+='"';i++;} else q=false; } else cur+=ch; }
+    else if(ch==='"') q=true;
+    else if(ch===','){ row.push(cur);cur=''; }
+    else if(ch==='\n'||ch==='\r'){ if(ch==='\r'&&text[i+1]==='\n')i++; row.push(cur);cur=''; if(row.some(c=>c.trim()!=='')) rows.push(row); row=[]; }
+    else cur+=ch;
+  }
+  row.push(cur); if(row.some(c=>c.trim()!=='')) rows.push(row);
+  return rows;
+}
+document.getElementById('csvFile').addEventListener('change', ev=>{
+  const f=ev.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    let rows=parseCSV(String(rd.result).replace(/^﻿/,''));
+    let recs=[];
+    const hdr = rows.length? rows[0].map(c=>norm(c)) : [];
+    const col = names=>hdr.findIndex(h=>names.some(n=>h.includes(n)));
+    const iN=col(['nome']), iA=col(['area']), iC=col(['cargo']), iM=col(['modelo']);
+    if(iN>=0 && iA>=0 && iC>=0){
+      // formato com cabeçalho (ex.: Nº,NOME COMPLETO,ÁREA,CARGO,MODELO DE TRABALHO,TURNO)
+      recs=rows.slice(1).map(r=>r.map(c=>(c||'').trim()))
+        .filter(r=>r[iN]).map(r=>[r[iA],r[iC],r[iN],iM>=0?r[iM]:'']);
+    }else{
+      if(rows.length && /área|area|cargo|contratado|nome/i.test(rows[0].join(','))) rows=rows.slice(1);
+      recs=rows.map(r=>r.map(c=>c.trim())).filter(r=>r.filter(c=>c).length>=3)
+        .map(r=> r.length>=4 ? [r[0],r[1],r[3]] : [r[0],r[1],r[2]])
+        .filter(r=>r[2]);
+    }
+    if(!recs.length){ alert('Não encontrei linhas válidas no CSV.\nFormatos aceitos: com cabeçalho contendo NOME, ÁREA, CARGO (e opcional MODELO), ou ÁREA,CARGO,NOME.'); ev.target.value=''; return; }
+    // remapear alocações existentes por nome
+    const seatByName={};
+    for(const k in assign){ const p=PEOPLE[assign[k]]; if(p) seatByName[norm(p.nome)]=k; }
+    PEOPLE=buildPeople(recs);
+    const na={};
+    PEOPLE.forEach(p=>{ const st=seatByName[norm(p.nome)]; if(st && na[st]===undefined) na[st]=p.id; });
+    assign=na;
+    localStorage.setItem(PKEY, JSON.stringify(PEOPLE));
+    save(); selected=null; document.body.classList.remove('assigning'); hint.style.display='none';
+    buildLegend(); renderFilters(); renderAll();
+    alert(PEOPLE.length+' pessoas carregadas. Alocações de quem continua na lista foram mantidas.');
+    ev.target.value='';
+  };
+  rd.readAsText(f,'utf-8');
+});
+
+/* ============ escala ============ */
+const stage=document.getElementById('stage'), wrap=document.getElementById('mapWrap');
+function fit(){
+  const w=wrap.clientWidth-8, h=wrap.clientHeight-8;
+  const sc=Math.min(w/1500, h/820, 1.15);
+  stage.style.transform=`scale(${sc})`;
+  stage.style.left=Math.max(0,(w-1500*sc)/2)+'px';
+  stage.style.top=Math.max(0,(h-820*sc)/2)+'px';
+}
+window.addEventListener('resize', fit);
+
+renderFilters(); renderAll(); fit();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Espelho de Lugares — Ace Gaming
+
+Mapa interativo de assentos do escritório da Ace Gaming (R. Olimpíadas, 134 — 3º andar).
+
+Aplicação estática em um único arquivo (`index.html`), sem dependências externas — basta abrir no navegador ou publicar em qualquer hospedagem de arquivos estáticos.
+
+## Funcionalidades
+
+- **3 layouts de planta**: layout atual (49 lugares), 42 posições e 60 posições
+- **Alocação de pessoas**: clique na pessoa e depois na cadeira, ou arraste e solte
+- **Auto-alocação** dos não alocados, com preferência de zona por área
+- **Filtros por modelo de trabalho** (Presencial + Híbrido, Remoto, Remoto c/ cidade, Vagas) e busca por nome, cargo ou área
+- **Importação e exportação de CSV** da lista de assentos
+- **Impressão** do mapa com a lista de assentos
+- As alocações ficam salvas no navegador (localStorage), separadas por layout
