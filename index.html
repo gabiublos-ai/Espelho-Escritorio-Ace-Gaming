@@ -85,6 +85,8 @@
   @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,92,0,.35)}50%{box-shadow:0 0 0 6px rgba(255,92,0,0)}}
   .chair.dragover{box-shadow:0 0 0 4px var(--accent);z-index:5}
   .chair.occ.vac{border:2px dashed rgba(255,255,255,.95)}
+  .chair.ext:not(.occ){border-color:var(--accent);background:var(--accent-soft)}
+  .chair.ext:not(.occ) .sn{color:var(--accent)}
 
   /* popover */
   #pop{position:fixed;z-index:50;background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.16);padding:12px 14px;display:none;min-width:210px}
@@ -118,8 +120,8 @@
   <div id="stats"><b id="nPlaced">0</b><span>/ <span id="nTotal">0</span> alocados</span><span id="nSeats"></span></div>
   <select id="layoutSel" class="btn" title="Layout do escritório" aria-label="Layout do escritório">
     <option value="atual">Layout atual</option>
-    <option value="p42">42 posições</option>
-    <option value="p60">60 posições</option>
+    <option value="aprovado">49 — Layout Aprovado</option>
+    <option value="expansao">61 — Expansão</option>
   </select>
   <label class="btn" for="csvFile" style="display:inline-flex;align-items:center">Subir CSV<input type="file" id="csvFile" accept=".csv,text/csv" style="display:none"></label>
   <button class="btn" id="btnAuto">Auto-alocar restantes</button>
@@ -251,15 +253,18 @@ try{
 function initials(n){const p=n.split(/\s+/);return (p[0][0]+(p.length>1?p[p.length-1][0]:'')).toUpperCase();}
 
 /* ============ layouts ============ */
-// 3 opções: layout atual (mesa coletiva não conta), planta 42 posições e planta 60 posições
+// 3 opções: layout atual, 49 aprovado (planta Apostou sem as cadeiras laranjas)
+// e 61 expansão (planta Apostou com as 12 cadeiras laranjas do meio das mesas leste)
 // (salas de reunião nunca contam; recepção tem exatamente 1 lugar em todos)
-const LAYOUTS = {atual:'Layout atual', p42:'42 posições', p60:'60 posições'};
+const LAYOUTS = {atual:'Layout atual', aprovado:'49 — Layout Aprovado', expansao:'61 — Expansão'};
 const LKEY='ace-espelho-layout-v1';
 let curLayout = localStorage.getItem(LKEY);
+if(curLayout==='p42') curLayout='aprovado';
+if(curLayout==='p60') curLayout='expansao';
 if(!LAYOUTS[curLayout]) curLayout='atual';
 
-const seats = []; // {id,x,y,zone}
-function addSeat(id,x,y,zone){seats.push({id,x,y,zone});}
+const seats = []; // {id,x,y,zone,ext}
+function addSeat(id,x,y,zone,ext){seats.push({id,x,y,zone,ext:!!ext});}
 
 const canvas = document.getElementById('canvas');
 let chairEls = {};
@@ -267,20 +272,24 @@ function el(tag,cls,style,html){const d=document.createElement(tag);if(cls)d.cla
 function room(x,y,w,h,label,tbl){const r=el('div','room',`left:${x}px;top:${y}px;width:${w}px;height:${h}px`);r.innerHTML=(tbl?`<div class="tbl" style="left:${w/2-32}px;top:${h/2-26}px;width:64px;height:40px"></div>`:'')+`<div class="rl">${label}</div>`;}
 
 // mesa vertical com N lugares por lado: desenha a mesa e cria os assentos
-function bench(prefix,start,cx,cy,perSide,zone){
+// mid: 'skip' deixa a posição central sem cadeira; 'ext' marca a central como expansão (laranja)
+function bench(prefix,start,cx,cy,perSide,zone,mid){
   const h=perSide*70+10;
   el('div','desk',`left:${cx-40}px;top:${cy-h/2}px;width:80px;height:${h}px`);
   let n=start;
-  const offs=[]; for(let i=0;i<perSide;i++) offs.push((i-(perSide-1)/2)*70);
-  offs.forEach(dy=>addSeat(prefix+n++, cx-55, cy+dy, zone));
-  offs.forEach(dy=>addSeat(prefix+n++, cx+55, cy+dy, zone));
+  const m=(perSide-1)/2;
+  const offs=[]; for(let i=0;i<perSide;i++) offs.push([(i-m)*70, i===m]);
+  [-55,55].forEach(dx=>offs.forEach(([dy,isMid])=>{
+    if(mid==='skip' && isMid) return;
+    addSeat(prefix+n++, cx+dx, cy+dy, zone, mid==='ext' && isMid);
+  }));
   return n;
 }
 
 function makeChairs(){
   seats.forEach(s=>{
     const c = document.createElement('button');
-    c.className='chair'; c.style.left=s.x+'px'; c.style.top=s.y+'px';
+    c.className='chair'+(s.ext?' ext':''); c.style.left=s.x+'px'; c.style.top=s.y+'px';
     c.dataset.seat=s.id;
     c.innerHTML=`<span class="sn">${s.id}</span>`;
     canvas.appendChild(c); chairEls[s.id]=c;
@@ -312,18 +321,21 @@ function buildMap(key){
     el('div','partition','left:970px;top:388px;width:460px');
     el('div','zoneLabel','left:48px;top:36px','TIME<small>24 lugares</small>');
     el('div','zoneLabel','left:962px;top:36px','Performance<small>24 lugares</small>');
-  }else if(key==='p42'){
-    let tn=1; tCols.forEach(cx=>{ tn=bench('T',tn,cx,400,3,'OESTE'); });
-    let pn=1; [220,560].forEach(cy=>pCols.forEach(cx=>{ pn=bench('P',pn,cx,cy,2,'LESTE'); }));
+  }else if(key==='aprovado'){
+    // planta aprovada (Apostou): oeste 3 mesas de 8 (Time Operações), leste 6 mesas com a
+    // posição central vazia (cadeiras laranjas não contam) = 24 + 24 + recepção = 49
+    let tn=1; tCols.forEach(cx=>{ tn=bench('T',tn,cx,400,4,'TIME'); });
+    let pn=1; [220,560].forEach(cy=>pCols.forEach(cx=>{ pn=bench('P',pn,cx,cy,3,'PERFORMANCE','skip'); }));
     el('div','partition','left:970px;top:388px;width:460px');
-    el('div','zoneLabel','left:48px;top:36px','Open space oeste<small>18 lugares</small>');
-    el('div','zoneLabel','left:962px;top:36px','Open space leste<small>24 lugares</small>');
-  }else{ // p60
-    let tn=1; tCols.forEach(cx=>{ tn=bench('T',tn,cx,400,4,'OESTE'); });
-    let pn=1; [220,560].forEach(cy=>pCols.forEach(cx=>{ pn=bench('P',pn,cx,cy,3,'LESTE'); }));
+    el('div','zoneLabel','left:48px;top:36px','Time Operações<small>24 lugares</small>');
+    el('div','zoneLabel','left:962px;top:36px','Performance<small>24 lugares</small>');
+  }else{ // expansao
+    // planta aprovada com as 12 cadeiras laranjas do meio das mesas leste = 24 + 36 + recepção = 61
+    let tn=1; tCols.forEach(cx=>{ tn=bench('T',tn,cx,400,4,'TIME'); });
+    let pn=1; [220,560].forEach(cy=>pCols.forEach(cx=>{ pn=bench('P',pn,cx,cy,3,'PERFORMANCE','ext'); }));
     el('div','partition','left:970px;top:388px;width:460px');
-    el('div','zoneLabel','left:48px;top:36px','Open space oeste<small>24 lugares</small>');
-    el('div','zoneLabel','left:962px;top:36px','Open space leste<small>36 lugares</small>');
+    el('div','zoneLabel','left:48px;top:36px','Time Operações<small>24 lugares</small>');
+    el('div','zoneLabel','left:962px;top:36px','Performance<small>36 lugares · 12 de expansão</small>');
   }
   addSeat('R1',760,546,'RECEPCAO');
   makeChairs();
@@ -356,6 +368,10 @@ if(!Object.keys(assignStore).length){
     });
   }catch(e){}
 }
+// migrar alocações das chaves antigas p42/p60 (assentos T/P mantêm os mesmos ids)
+if(assignStore.p42 && !assignStore.aprovado) assignStore.aprovado=assignStore.p42;
+if(assignStore.p60 && !assignStore.expansao) assignStore.expansao=assignStore.p60;
+delete assignStore.p42; delete assignStore.p60;
 Object.keys(LAYOUTS).forEach(k=>{ if(!assignStore[k] || typeof assignStore[k]!=='object') assignStore[k]={}; });
 let assign = assignStore[curLayout]; // seatId -> personId
 function sanitize(){ for(const k in assign){ if(!seats.find(s=>s.id===k) || !PEOPLE[assign[k]]) delete assign[k]; } }
@@ -461,7 +477,7 @@ function renderChairs(){
       c.draggable=true;
       c.ondragstart=ev=>{ ev.dataTransfer.setData('text/plain', String(pid)); };
     }else{
-      c.classList.remove('occ','fdim','vac'); c.style.background=''; c.title='Assento '+s.id;
+      c.classList.remove('occ','fdim','vac'); c.style.background=''; c.title='Assento '+s.id+(s.ext?' · expansão':'');
       c.innerHTML=`<span class="sn">${s.id}</span>`; c.draggable=false; c.ondragstart=null;
     }
   });

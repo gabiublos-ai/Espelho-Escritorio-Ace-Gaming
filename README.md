@@ -6,7 +6,7 @@ Aplicação estática em um único arquivo (`index.html`), sem dependências ext
 
 ## Funcionalidades
 
-- **3 layouts de planta**: layout atual (49 lugares), 42 posições e 60 posições
+- **3 layouts de planta**: layout atual (49 lugares), **49 — Layout Aprovado** (planta Apostou sem as cadeiras de expansão) e **61 — Expansão** (planta Apostou com as 12 cadeiras laranjas do meio das mesas leste)
 - **Alocação de pessoas**: clique na pessoa e depois na cadeira, ou arraste e solte
 - **Auto-alocação** dos não alocados, com preferência de zona por área
 - **Filtros por modelo de trabalho** (Presencial + Híbrido, Remoto, Remoto c/ cidade, Vagas) e busca por nome, cargo ou área
