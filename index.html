@@ -95,6 +95,14 @@
   #pop .row{display:flex;gap:8px}
   #pop .btn{font-size:12px;padding:5px 10px}
 
+  /* exportar alocações */
+  #shareOv{position:fixed;inset:0;background:rgba(32,29,24,.45);z-index:60;display:none;align-items:center;justify-content:center}
+  #shareOv .shCard{background:var(--surface);border-radius:12px;padding:18px 20px;width:min(540px,92vw);box-shadow:0 12px 40px rgba(0,0,0,.3)}
+  #shareOv h3{margin:0 0 6px;font-size:15px}
+  #shareOv p{margin:0 0 10px;font-size:12px;color:var(--muted);line-height:1.4}
+  #shareOv textarea{width:100%;height:170px;font:11px ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical;box-sizing:border-box}
+  #shareOv .row{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+
   #legend{position:absolute;left:14px;bottom:12px;z-index:15;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:10px;padding:8px 12px;display:flex;flex-wrap:wrap;gap:6px 14px;max-width:70%}
   #legend .li{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600}
   #legend .li i{width:9px;height:9px;border-radius:50%;display:inline-block}
@@ -103,7 +111,7 @@
   #printList{display:none}
   @media print{
     body{overflow:visible;background:#fff}
-    #topbar .btn,#sidebar,#hint,#legend,#pop{display:none !important}
+    #topbar .btn,#sidebar,#hint,#legend,#pop,#shareOv{display:none !important}
     #app{display:block;height:auto}
     #mapWrap{overflow:visible;height:auto}
     #stage{position:static;transform:scale(.62) !important;transform-origin:0 0}
@@ -126,6 +134,7 @@
   <label class="btn" for="csvFile" style="display:inline-flex;align-items:center">Subir CSV<input type="file" id="csvFile" accept=".csv,text/csv" style="display:none"></label>
   <button class="btn" id="btnAuto">Auto-alocar restantes</button>
   <button class="btn" id="btnCsv">Baixar CSV</button>
+  <button class="btn" id="btnShare">Exportar alocações</button>
   <button class="btn" id="btnPrint">Imprimir</button>
   <button class="btn" id="btnClear">Limpar tudo</button>
 </div>
@@ -144,6 +153,19 @@
 </div>
 
 <div id="pop" role="dialog"></div>
+
+<div id="shareOv">
+  <div class="shCard">
+    <h3>Exportar alocações</h3>
+    <p>Este código contém o espelho de todos os layouts. Para que quem receber o link veja estas
+    alocações, envie o código para quem publica o app fixá-lo como espelho oficial.</p>
+    <textarea id="shareTxt" readonly></textarea>
+    <div class="row">
+      <button class="btn" id="shareCopy">Copiar código</button>
+      <button class="btn primary" id="shareClose">Fechar</button>
+    </div>
+  </div>
+</div>
 
 <div id="printList"><h2>Lista de assentos</h2><table><thead><tr><th>Assento</th><th>Nome</th><th>Cargo</th><th>Área</th></tr></thead><tbody id="plBody"></tbody></table></div>
 
@@ -379,6 +401,24 @@ if(assignStore.p42 && !assignStore.aprovado) assignStore.aprovado=assignStore.p4
 if(assignStore.p60 && !assignStore.expansao) assignStore.expansao=assignStore.p60;
 delete assignStore.p42; delete assignStore.p60;
 Object.keys(LAYOUTS).forEach(k=>{ if(!assignStore[k] || typeof assignStore[k]!=='object') assignStore[k]={}; });
+
+/* ============ espelho oficial (fixado no arquivo) ============ */
+// Alocações padrão por layout, no formato {layout:{assento:'Nome da pessoa'}}.
+// São aplicadas para quem abre o app sem nenhum estado salvo (ex.: link compartilhado),
+// preservando a estrutura de alocação ao compartilhar. Para atualizar, use o botão
+// "Exportar alocações" e substitua o objeto abaixo pelo código gerado.
+const PRESET = {};
+if(Object.keys(LAYOUTS).every(k=>!Object.keys(assignStore[k]).length)){
+  Object.keys(PRESET).forEach(k=>{
+    if(!LAYOUTS[k]) return;
+    const m={};
+    for(const seat in PRESET[k]){
+      const pid=PEOPLE.findIndex(p=>norm(p.nome)===norm(String(PRESET[k][seat])));
+      if(pid>=0 && m[seat]===undefined && !Object.values(m).includes(pid)) m[seat]=pid;
+    }
+    assignStore[k]=m;
+  });
+}
 let assign = assignStore[curLayout]; // seatId -> personId
 function sanitize(){ for(const k in assign){ if(!seats.find(s=>s.id===k) || !PEOPLE[assign[k]]) delete assign[k]; } }
 function seatOf(pid){ for(const k in assign) if(assign[k]===pid) return k; return null; }
@@ -601,6 +641,30 @@ document.getElementById('btnCsv').addEventListener('click', ()=>{
   a.download='espelho_lugares_ace_gaming.csv'; a.click();
 });
 document.getElementById('btnPrint').addEventListener('click', ()=>window.print());
+
+/* exportar alocações (para fixar o espelho oficial no arquivo publicado) */
+const shareOv=document.getElementById('shareOv'), shareTxt=document.getElementById('shareTxt');
+document.getElementById('btnShare').addEventListener('click', ()=>{
+  const out={};
+  Object.keys(LAYOUTS).forEach(k=>{
+    const a=assignStore[k]||{}, m={};
+    Object.keys(a).forEach(seat=>{ const p=PEOPLE[a[seat]]; if(p) m[seat]=p.nome; });
+    if(Object.keys(m).length) out[k]=m;
+  });
+  shareTxt.value = Object.keys(out).length
+    ? JSON.stringify(out, null, 1)
+    : '// nenhuma alocação feita ainda — aloque as pessoas e exporte de novo';
+  shareOv.style.display='flex';
+  shareTxt.focus(); shareTxt.select();
+});
+document.getElementById('shareCopy').addEventListener('click', ()=>{
+  const done=()=>{ const b=document.getElementById('shareCopy'); b.textContent='Copiado!'; setTimeout(()=>b.textContent='Copiar código',1500); };
+  const fallback=()=>{ shareTxt.focus(); shareTxt.select(); try{ document.execCommand('copy'); done(); }catch(e){} };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(shareTxt.value).then(done, fallback);
+  else fallback();
+});
+document.getElementById('shareClose').addEventListener('click', ()=>{ shareOv.style.display='none'; });
+shareOv.addEventListener('click', ev=>{ if(ev.target===shareOv) shareOv.style.display='none'; });
 
 /* legenda */
 function buildLegend(){

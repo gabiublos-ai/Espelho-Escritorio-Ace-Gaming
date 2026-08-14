@@ -13,3 +13,6 @@ Aplicação estática em um único arquivo (`index.html`), sem dependências ext
 - **Importação e exportação de CSV** da lista de assentos
 - **Impressão** do mapa com a lista de assentos
 - As alocações ficam salvas no navegador (localStorage), separadas por layout
+- **Espelho oficial fixado no arquivo** (`PRESET` no `index.html`): aplicado a quem abre o app
+  sem estado salvo — assim a estrutura de alocação é preservada ao compartilhar o link.
+  Para atualizar, use o botão **Exportar alocações** e substitua o objeto `PRESET` pelo código gerado
