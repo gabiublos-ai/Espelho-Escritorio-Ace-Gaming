@@ -262,7 +262,9 @@ const RAW = [
  ['Performance MKT','Analista Tráfego III - mobile','Vaga em aberto','',true],
  ['Lifecycle & CRM','Designer III','Vaga em aberto','',true],
  ['Tecnologia & Produto','Analista segurança & Infraestrutura','Vaga em aberto','',true],
- ['Tecnologia & Produto','Analista Suporte e Sistemas','Vaga em aberto','',true]
+ ['Tecnologia & Produto','Analista Suporte e Sistemas','Vaga em aberto','',true],
+ // contratações posteriores entram após as vagas para preservar os ids salvos
+ ['Financeiro, Jurídico & Compliance','','Camila Cabral','']
 ];
 const LOW = new Set(['da','de','do','das','dos','e']);
 function titleCase(s){
@@ -462,7 +464,8 @@ const PRESET = {
   "T3": "Rodrigo Bortolucci",
   "T5": "Nathália Alves Pereira",
   "T6": "Mayalla Nathalia de Almeida Cerqueira",
-  "T7": "Gustavo Henrique Pereira de Lima"
+  "T7": "Gustavo Henrique Pereira de Lima",
+  "T8": "Camila Cabral"
  }
 };
 if(Object.keys(LAYOUTS).every(k=>!Object.keys(assignStore[k]).length)){
